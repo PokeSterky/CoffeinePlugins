@@ -1,0 +1,158 @@
+-- Proof that i have cams on u, u are skidding this.
+
+
+local CoffeinePlugin = Coffeine.Plugin()
+local CoffeineNotification = Coffeine.Notification
+
+local AIDTab = CoffeinePlugin:Tab({
+    Text = "Animation ID"
+})
+
+local AIDSection = AIDTab:Section({
+    Text = "Animation"
+})
+ 
+local AnimPlay = [[local plr = game.Players.LocalPlayer
+local char = plr.Character
+ 
+-- Paste here
+ 
+for i, v in pairs(char.Humanoid:GetPlayingAnimationTracks()) do
+   v:Stop();
+end
+ 
+char.Animate.Disabled = true
+ 
+local IDPlaying = true
+local deadConnection
+ 
+spawn(function()
+    deadConnection = char.Humanoid.Died:Connect(function()
+        IDPlaying = false
+        deadConnection:Disconnect()
+    end)
+end)
+ 
+local delta = 1
+ 
+local AlphaLerp = 1
+ 
+function FindMotorfromPartName(partname)
+    found = false
+    for i,v in next, char:GetDescendants() do
+        if v:IsA("Motor6D") then
+            if v.Part1.Name == partname then
+ 
+                found = v
+                break
+            end
+        end
+    end
+ 
+    return found
+end
+ 
+while IDPlaying do
+    if IDPlaying == false then
+        break
+    end
+    delta = delta + (1/60)
+    for i, v in next, frames do
+        task.wait(delta/60)
+        for o, b in next, poses[v] do
+            if b.Name ~= "HumanoidRootPart" then
+                if FindMotorfromPartName(b.Name) then
+                    FindMotorfromPartName(b.Name).Transform = b.CFrame
+                end
+            end
+        end
+    end
+end]]
+ 
+AIDSection:Input({
+    Placeholder = "Animation ID",
+    Flag = "AnimIDInput",
+    Tooltip = "Put your animation id here.",
+    Callback = function(a)
+        if tonumber(a) then
+            animobj = game:GetObjects("rbxassetid://"..tostring(a))[1]
+            if animobj == nil then
+                Coffeine.Notification({Title = "Coffeine",Text = "Invalid id."})
+            else
+                local plr = game.Players.LocalPlayer
+                local char = plr.Character
+ 
+                local poses = {}
+                local frames = {}
+ 
+                local funny_index = 0
+ 
+                for i,v in next, animobj:GetChildren() do
+                    table.insert(frames, v.Time)
+                    poses[v.Time] = {}
+                    for o,b in next, v:GetDescendants() do
+                        if b.Name ~= "HumanoidRootPart" then
+                            table.insert(poses[v.Time],{v.Time,"CFrame.new("..tostring(b.CFrame)..")",b.Name})
+                        end
+                    end
+                end
+ 
+                animobj:Destroy()
+ 
+                function Serialize(t,minification)
+                    ident = minification == false and "   " or ""
+                    strs = {"{"}
+ 
+                    function getIdent(count)
+                        return string.rep(ident,count)
+                    end
+ 
+                    for a,b in next, t do
+                        if a ~= nil then
+                            table.insert(strs,getIdent(1).."["..tostring(a).."] = ")
+                            if type(b) == "table" then
+                                table.insert(strs,getIdent(2).."{")
+                                for c,d in next, b do
+                                    table.insert(strs,getIdent(3).."["..c.."] = {[\"Name\"] = \""..d[3].."\", [\"CFrame\"] = "..d[2].."},")
+                                end
+                                table.insert(strs,getIdent(2).."},")
+                            end
+                        end
+                    end
+ 
+                    table.insert(strs,"}")
+ 
+                    return (minification == false and table.concat(strs,"\n") or table.concat(strs):gsub("   ",""))
+                end
+ 
+                local frames_string = "{"..table.concat(frames, ",").."}"
+ 
+                converted = ("local frames = "..frames_string.."\nlocal poses = "..Serialize(poses,false))
+            end
+        elseif not tonumber(a) then
+            CoffeineNotification({Title = "Coffeine",Text = "Invalid id."})
+        end
+    end
+})
+ 
+AIDSection:Button({
+    Text = "Convert",
+    Tooltip = "Converts to CFrame",
+    Callback = function()
+        if converted then
+            setclipboard(converted)
+            CoffeineNotification({Title = "Coffeine",Text = "Copied!"})
+        else
+            CoffeineNotification({Title = "Coffeine",Text = "Unknown Error"})
+        end
+    end
+})
+ 
+AIDSection:Button({
+    Text = "Copy Animation Player",
+    Tooltip = "Copies Animation Player.",
+    Callback = function()
+        setclipboard(AnimPlay)
+        CoffeineNotification({Title = "Coffeine",Text = "Copied!"})
+    end
+})
